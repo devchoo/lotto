@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>로또 번호 추출기</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f4f8; min-height: 100vh; padding: 20px 16px; }
+  h1 { text-align: center; font-size: 1.5rem; font-weight: 700; color: #1a202c; margin-bottom: 20px; }
+  .card { background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+  .card h2 { font-size: 0.8rem; font-weight: 600; color: #718096; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 12px; }
+  label { font-size: 0.9rem; color: #4a5568; display: flex; align-items: center; gap: 8px; }
+  input[type=number] { border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 7px 10px; font-size: 0.9rem; outline: none; }
+  input[type=number]:focus { border-color: #667eea; }
+
+  /* 체크박스 */
+  input[type=checkbox] { width: 18px; height: 18px; accent-color: #667eea; cursor: pointer; }
+
+  /* 슬라이더 */
+  .slider-wrap { margin-top: 14px; display: none; }
+  .slider-wrap.show { display: block; }
+  .slider-label { display: flex; justify-content: space-between; font-size: 0.82rem; color: #4a5568; margin-bottom: 6px; }
+  .slider-label span { font-weight: 700; color: #667eea; font-size: 0.95rem; }
+  input[type=range] { width: 100%; accent-color: #667eea; cursor: pointer; height: 4px; }
+  .missing-balls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; min-height: 28px; }
+  .missing-ball { background: #fef3c7; color: #92400e; border: 1.5px solid #f6d860; border-radius: 8px; padding: 3px 9px; font-size: 0.82rem; font-weight: 700; }
+  .missing-empty { font-size: 0.8rem; color: #a0aec0; padding: 4px 0; }
+
+  /* 번호 그리드 → flex wrap */
+  .freq-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .freq-ball {
+    position: relative; background: #edf2f7; border-radius: 10px;
+    padding: 6px 0; text-align: center; cursor: pointer;
+    border: 2px solid transparent; transition: all 0.15s; user-select: none;
+    flex: 0 0 calc(11.11% - 6px); /* 9열 */
+    min-width: 0;
+  }
+  @media (max-width: 360px) {
+    .freq-ball { flex: 0 0 calc(12.5% - 6px); } /* 8열 */
+  }
+  .freq-ball:hover { background: #e2e8f0; }
+  .freq-ball.selected { background: #667eea; border-color: #5a67d8; }
+  .freq-ball.selected .num { color: #fff !important; }
+  .freq-ball.selected .freq-pct { color: #c3dafe; }
+  .freq-ball.is-missing { outline: 2px solid #f6d860; outline-offset: 1px; }
+  .freq-ball.is-excluded { outline: 2px solid #fc8181; outline-offset: 1px; }
+  .freq-ball.is-missing.is-excluded { outline: 2px solid #fc8181; outline-offset: 1px; }
+  .freq-ball .num { font-size: 0.9rem; font-weight: 700; display: block; }
+  .freq-ball .freq-pct { font-size: 0.55rem; color: #a0aec0; display: block; margin-top: 1px; }
+  .freq-ball .badge { position: absolute; top: -5px; right: -5px; background: #fc8181; color: #fff; font-size: 0.5rem; border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+
+  /* 정렬 버튼 */
+  .sort-row { display: flex; gap: 6px; margin-bottom: 10px; }
+  .sort-btn { background: none; border: 1.5px solid #e2e8f0; border-radius: 8px; padding: 6px 14px; font-size: 0.82rem; cursor: pointer; color: #4a5568; }
+  .sort-btn.active { background: #667eea; color: #fff; border-color: #667eea; }
+
+  .consec-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+  .consec-ball {
+    flex: 0 0 calc(11.11% - 6px);
+    background: #edf2f7; border-radius: 10px;
+    padding: 6px 0; text-align: center;
+    cursor: pointer; border: 2px solid transparent;
+    transition: all 0.15s; user-select: none; min-width: 0;
+  }
+  .consec-ball:hover { background: #e2e8f0; }
+  .consec-ball.selected { background: #667eea; border-color: #5a67d8; }
+  .consec-ball.selected .num { color: #fff !important; }
+  .consec-ball.selected .csub { color: #c3dafe; }
+  .consec-ball .num { font-size: 0.9rem; font-weight: 700; display: block; }
+  .consec-ball .csub { font-size: 0.55rem; color: #a0aec0; display: block; margin-top: 1px; }
+  .consec-ball .badge { position: absolute; top: -5px; right: -5px; background: #fc8181; color: #fff; font-size: 0.5rem; border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+  /* 힌트 */
+  .hint { font-size: 0.75rem; color: #a0aec0; margin-top: 8px; }
+
+  /* 데이터 범위 */
+  .range-wrap { margin-top: 10px; display: none; }
+  .range-wrap.show { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  /* 버튼 */
+  .btn { background: #667eea; color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 1rem; font-weight: 700; width: 100%; cursor: pointer; margin-top: 4px; }
+  .btn:active { background: #5a67d8; }
+
+  /* 결과 */
+  .result { display: none; }
+  .result.show { display: block; }
+  .balls { display: flex; justify-content: center; gap: 8px; flex-wrap: nowrap; margin: 10px 0 4px; }
+  .ball { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; font-weight: 800; color: #fff; box-shadow: 0 3px 8px rgba(0,0,0,0.15); flex-shrink: 0; }
+  .ball.fixed { box-shadow: 0 3px 8px rgba(102,126,234,0.5), 0 0 0 3px #667eea; }
+  .stats-txt { font-size: 0.78rem; color: #718096; margin-bottom: 10px; }
+  .game-label { font-size: 0.78rem; color: #a0aec0; margin-bottom: 2px; }
+  .game-item { margin-bottom: 18px; }
+</style>
+</head>
+<body>
+
+<h1>🎱 로또 번호 추출기</h1>
+
+<!-- 데이터 범위 -->
+<div class="card">
+  <h2>데이터 범위</h2>
+  <label>
+    <input type="checkbox" id="useAll" checked onchange="toggleRange()">
+    전체 회차 사용
+  </label>
+  <div class="range-wrap" id="rangeWrap">
+    최근 <input type="number" id="recentN" value="100" min="10" max="1221" style="width:70px"> 회차만
+  </div>
+</div>
+
+<!-- 미출현 번호 -->
+<div class="card">
+  <h2>미출현 번호 우선 선택</h2>
+  <label>
+    <input type="checkbox" id="useMissing" onchange="toggleMissing()">
+    미출현 번호 우선 포함
+  </label>
+  <div class="slider-wrap" id="sliderWrap">
+    <div class="slider-label">
+      최근 <span id="missingVal">10</span> 회차 미출현
+    </div>
+    <input type="range" id="missingSlider" min="1" max="50" value="10" oninput="onSlider()">
+    <div class="missing-balls" id="missingBalls">
+      <span class="missing-empty">슬라이더를 조절하세요</span>
+    </div>
+  </div>
+</div>
+
+<!-- 최근 당첨번호 제외 -->
+<div class="card">
+  <h2>최근 당첨번호 제외</h2>
+  <label>
+    <input type="checkbox" id="useExclude" onchange="toggleExclude()">
+    최근 당첨번호 제외
+  </label>
+  <div class="slider-wrap" id="excludeWrap">
+    <div class="slider-label">
+      최근 <span id="excludeVal">5</span> 회차 당첨번호 제외
+    </div>
+    <input type="range" id="excludeSlider" min="1" max="50" value="5" oninput="onExcludeSlider()">
+    <div style="margin-top:8px">
+      <label style="margin-bottom:0">
+        <input type="checkbox" id="excludeMultiOnly" onchange="onExcludeSlider()">
+        2회 이상 당첨된 번호만 제외
+      </label>
+    </div>
+    <div class="missing-balls" id="excludeBalls">
+      <span class="missing-empty">슬라이더를 조절하세요</span>
+    </div>
+  </div>
+</div>
+
+<!-- 번호별 출현 확률 -->
+<div class="card">
+  <h2>번호별 출현 확률</h2>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+    <div class="sort-row" id="freqSortRow" style="margin-bottom:0">
+      <button class="sort-btn active" onclick="sortBalls('num')">번호순</button>
+      <button class="sort-btn" onclick="sortBalls('freq')">빈도순</button>
+    </div>
+    <label style="font-size:0.82rem;color:#4a5568;margin:0;gap:6px">
+      <input type="checkbox" id="showConsecTag" onchange="renderGrid()">
+      연속 출현 표시
+    </label>
+  </div>
+  <div class="freq-grid" id="freqGrid"></div>
+  <p class="hint">번호 탭 → 고정 포함 (최대 5개)</p>
+</div>
+
+<!-- 가뭄 후 복귀 회차 분석 -->
+<div class="card">
+  <h2>10회 이상 공백 후 3개+ 동시 복귀 회차</h2>
+  <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+    <span style="font-size:0.82rem;color:#4a5568">최소 공백:</span>
+    <select id="droughtMin" onchange="renderDrought()" style="border:1.5px solid #e2e8f0;border-radius:8px;padding:5px 8px;font-size:0.82rem;">
+      <option value="10">10회+</option>
+      <option value="15">15회+</option>
+      <option value="20">20회+</option>
+      <option value="30">30회+</option>
+    </select>
+    <span style="font-size:0.82rem;color:#4a5568">최소 번호 수:</span>
+    <select id="droughtCount" onchange="renderDrought()" style="border:1.5px solid #e2e8f0;border-radius:8px;padding:5px 8px;font-size:0.82rem;">
+      <option value="3">3개+</option>
+      <option value="4">4개+</option>
+      <option value="5">5개+</option>
+    </select>
+  </div>
+  <div id="droughtList" style="font-size:0.82rem;color:#4a5568;max-height:300px;overflow-y:auto"></div>
+</div>
+
+<!-- 게임 수 -->
+<div class="card">
+  <h2>추출 게임 수</h2>
+  <label>
+    게임 수
+    <input type="number" id="gameCount" value="5" min="1" max="20" style="width:70px">
+  </label>
+</div>
+
+<button class="btn" onclick="generate()">🎰 번호 추출</button>
+
+<div class="card result" id="result" style="margin-top:14px; text-align:center;">
+  <h2>추출 결과</h2>
+  <div id="resultGames"></div>
+</div>
+
+<script>
+let allDraws = [], fixedNums = new Set(), sortMode = 'num'
+
+function ballColor(n) {
+  if (n <= 10) return '#f6ad55'
+  if (n <= 20) return '#68d391'
+  if (n <= 30) return '#63b3ed'
+  if (n <= 40) return '#fc8181'
+  return '#b794f4'
+}
+
+function getExcludeNums(n) {
+  const multiOnly = document.getElementById('excludeMultiOnly')?.checked
+  const draws = allDraws.slice(-n)
+  if (multiOnly) {
+    const freq = {}
+    draws.forEach(d => d.numbers.forEach(x => { freq[x] = (freq[x] || 0) + 1 }))
+    return Object.entries(freq).filter(([,v]) => v >= 2).map(([k]) => parseInt(k))
+  }
+  return [...new Set(draws.flatMap(d => d.numbers))]
+}
+
+function onExcludeSlider() {
+  const v = document.getElementById('excludeSlider').value
+  document.getElementById('excludeVal').textContent = v
+  renderExcludeBalls(parseInt(v))
+  renderGrid()
+}
+
+function renderExcludeBalls(n) {
+  const nums = getExcludeNums(n)
+  const el = document.getElementById('excludeBalls')
+  el.innerHTML = nums.sort((a,b)=>a-b).map(x => `<span class="missing-ball" style="background:#fee2e2;border-color:#fca5a5;color:#991b1b">${x}</span>`).join('')
+}
+
+function toggleExclude() {
+  const checked = document.getElementById('useExclude').checked
+  document.getElementById('excludeWrap').classList.toggle('show', checked)
+  if (checked) renderExcludeBalls(parseInt(document.getElementById('excludeSlider').value))
+  renderGrid()
+}
+
+let droughtData = []
+
+async function loadDroughtData() {
+  try {
+    const res = await fetch('./drought_data.json')
+    droughtData = await res.json()
+    renderDrought()
+  } catch {}
+}
+
+function renderDrought() {
+  const minGap = parseInt(document.getElementById('droughtMin').value)
+  const minCount = parseInt(document.getElementById('droughtCount').value)
+  const filtered = droughtData
+    .map(r => ({
+      ...r,
+      drought: r.drought.filter(d => d.gap >= minGap)
+    }))
+    .filter(r => r.drought.length >= minCount)
+    .slice(-50).reverse()  // 최신 50개, 최신순
+
+  const el = document.getElementById('droughtList')
+  if (!filtered.length) { el.innerHTML = '<span style="color:#a0aec0">해당 조건의 회차가 없습니다</span>'; return }
+
+  el.innerHTML = `<div style="color:#718096;font-size:0.75rem;margin-bottom:6px">${filtered.length}개 회차 (최신순)</div>`
+    + filtered.map(r => {
+      const balls = r.numbers.map(n => {
+        const isDrought = r.drought.some(d => d.num === n)
+        return `<span style="display:inline-block;background:${isDrought ? '#fc8181' : '#edf2f7'};color:${isDrought ? '#fff' : '#4a5568'};border-radius:50%;width:26px;height:26px;text-align:center;line-height:26px;font-size:0.78rem;font-weight:700;margin:1px">${n}</span>`
+      }).join('')
+      const info = r.drought.map(d => `<span style="color:#e53e3e">${d.num}</span>(${d.gap}회)`).join(', ')
+      return `<div style="padding:8px 0;border-bottom:1px solid #f0f4f8">
+        <span style="font-size:0.75rem;color:#718096;margin-right:6px">${r.round}회</span>${balls}
+        <div style="font-size:0.72rem;color:#718096;margin-top:3px">공백 복구: ${info}</div>
+      </div>`
+    }).join('')
+}
+
+// 번호별 직전 회차 연속 직접 당첨 횟수 (1회 이상 연속이 맴 것)
+function getConsecFreq() {
+  const consec = {}
+  for (let i = 1; i <= 45; i++) consec[i] = 0
+  const draws = [...allDraws].sort((a, b) => a.round - b.round)
+  let prevSet = new Set()
+  for (const d of draws) {
+    const cur = new Set(d.numbers)
+    for (const n of cur) { if (prevSet.has(n)) consec[n]++ }
+    prevSet = cur
+  }
+  return consec
+}
+
+// 번호별 최대 연속 출현 횟수
+function getMaxStreakMap() {
+  const maxStreak = {}, curStreak = {}
+  for (let i = 1; i <= 45; i++) { maxStreak[i] = 0; curStreak[i] = 0 }
+  const draws = [...allDraws].sort((a, b) => a.round - b.round)
+  for (const d of draws) {
+    const nums = new Set(d.numbers)
+    for (let n = 1; n <= 45; n++) {
+      if (nums.has(n)) {
+        curStreak[n]++
+        if (curStreak[n] > maxStreak[n]) maxStreak[n] = curStreak[n]
+      } else {
+        curStreak[n] = 0
+      }
+    }
+  }
+  return maxStreak
+}
+
+async function loadData() {
+  const statusEl = document.createElement('div')
+  statusEl.id = 'loadStatus'
+  statusEl.style.cssText = 'text-align:center;padding:20px;color:#718096;font-size:0.9rem;'
+  statusEl.textContent = '최신 회차 확인 중...'
+  document.querySelector('h1').after(statusEl)
+
+  try {
+    // 1. 최신 회차 파악 (현재 엑셀 기준 최신 + API 확인)
+    // lotto_data.json에서 기존 데이터 로드
+    const baseRes = await fetch('./lotto_data.json')
+    const baseDraws = await baseRes.json()
+    baseDraws.sort((a, b) => a.round - b.round)
+    let latestLocal = baseDraws[baseDraws.length - 1].round
+
+    // 2. API로 최신 회차 이후 데이터 추가 수집
+    const newDraws = []
+    let round = latestLocal + 1
+    statusEl.textContent = `최신 데이터 확인 중... (${latestLocal}회차 이후)`
+
+    while (true) {
+      try {
+        const r = await fetch(`/lotto-api/?srchLtEpsd=${round}`)
+        const data = await r.json()
+        const list = data?.data?.list
+        if (!list || list.length === 0) break
+        const d = list[0]
+        if (!d.tm1WnNo) break
+        newDraws.push({
+          round: d.ltEpsd,
+          numbers: [d.tm1WnNo, d.tm2WnNo, d.tm3WnNo, d.tm4WnNo, d.tm5WnNo, d.tm6WnNo].map(Number).sort((a,b)=>a-b)
+        })
+        round++
+      } catch { break }
+    }
+
+    allDraws = [...baseDraws, ...newDraws]
+    allDraws.sort((a, b) => a.round - b.round)
+
+    const latest = allDraws[allDraws.length - 1]
+    statusEl.textContent = `✅ ${allDraws.length}회차 데이터 로드 완료 (최신: ${latest.round}회 · ${latest.numbers.join(', ')})`
+    statusEl.style.color = '#38a169'
+  } catch (e) {
+    statusEl.textContent = '⚠️ 데이터 로드 실패. 기존 데이터 사용 중.'
+    statusEl.style.color = '#e53e3e'
+    const baseRes = await fetch('./lotto_data.json')
+    allDraws = await baseRes.json()
+  }
+
+  renderGrid()
+  loadDroughtData()
+}
+
+function getDraws() {
+  if (document.getElementById('useAll').checked) return allDraws
+  const n = parseInt(document.getElementById('recentN').value) || 100
+  return allDraws.slice(-n)
+}
+
+function getFreq(draws) {
+  const freq = {}
+  for (let i = 1; i <= 45; i++) freq[i] = 0
+  draws.forEach(d => d.numbers.forEach(n => freq[n]++))
+  return freq
+}
+
+function getMissingNums(n) {
+  const appeared = new Set(allDraws.slice(-n).flatMap(d => d.numbers))
+  return Array.from({length: 45}, (_, i) => i + 1).filter(x => !appeared.has(x))
+}
+
+function onSlider() {
+  const v = document.getElementById('missingSlider').value
+  document.getElementById('missingVal').textContent = v
+  renderMissingBalls(parseInt(v))
+  renderGrid()
+}
+
+function renderMissingBalls(n) {
+  const missing = getMissingNums(n)
+  const el = document.getElementById('missingBalls')
+  if (missing.length === 0) {
+    el.innerHTML = '<span class="missing-empty">모든 번호가 출현했습니다</span>'
+  } else {
+    el.innerHTML = missing.map(x => `<span class="missing-ball">${x}</span>`).join('')
+  }
+}
+
+function renderGrid() {
+  const draws = getDraws()
+  const total = draws.reduce((s, d) => s + d.numbers.length, 0)
+  const freq = getFreq(draws)
+  const useMissing = document.getElementById('useMissing').checked
+  const missingN = parseInt(document.getElementById('missingSlider').value) || 10
+  const missingSet = useMissing ? new Set(getMissingNums(missingN)) : new Set()
+  const useExcludeGrid = document.getElementById('useExclude').checked
+  const excludeNGrid = parseInt(document.getElementById('excludeSlider').value) || 5
+  const excludeSet = useExcludeGrid ? new Set(getExcludeNums(excludeNGrid)) : new Set()
+
+  let nums = Array.from({length: 45}, (_, i) => i + 1)
+  if (sortMode === 'freq') nums.sort((a, b) => freq[b] - freq[a])
+
+  const showConsec = document.getElementById('showConsecTag')?.checked
+  const maxStreak = showConsec ? getMaxStreakMap() : null
+
+  document.getElementById('freqGrid').innerHTML = nums.map(n => {
+    const pct = total > 0 ? (freq[n] / total * 100).toFixed(2) : '0.00'
+    const isFixed = fixedNums.has(n)
+    const isMissing = missingSet.has(n)
+    const isExcluded = excludeSet.has(n)
+    const streakTag = showConsec && maxStreak[n] >= 2
+      ? `<span style="position:absolute;top:-6px;left:-4px;background:#9f7aea;color:#fff;font-size:0.45rem;border-radius:4px;padding:1px 3px;font-weight:700">${maxStreak[n]}연속</span>`
+      : ''
+    return `<div class="freq-ball ${isFixed ? 'selected' : ''} ${isMissing ? 'is-missing' : ''} ${isExcluded ? 'is-excluded' : ''}" onclick="toggleFixed(${n})">
+      ${streakTag}
+      <span class="num" style="${isFixed ? '' : `color:${ballColor(n)}`}">${n}</span>
+      <span class="freq-pct">${pct}%</span>
+      ${isFixed ? '<div class="badge">★</div>' : ''}
+    </div>`
+  }).join('')
+}
+
+function toggleFixed(n) {
+  if (fixedNums.has(n)) { fixedNums.delete(n) }
+  else {
+    if (fixedNums.size >= 5) { alert('고정 번호는 최대 5개입니다.'); return }
+    fixedNums.add(n)
+  }
+  renderGrid()
+}
+
+function sortBalls(mode) {
+  sortMode = mode
+  document.querySelectorAll('#freqSortRow .sort-btn').forEach((b, i) => {
+    b.classList.toggle('active', (i === 0 && mode === 'num') || (i === 1 && mode === 'freq'))
+  })
+  renderGrid()
+}
+
+function toggleRange() {
+  const useAll = document.getElementById('useAll').checked
+  document.getElementById('rangeWrap').classList.toggle('show', !useAll)
+  renderGrid()
+}
+
+function toggleMissing() {
+  const checked = document.getElementById('useMissing').checked
+  document.getElementById('sliderWrap').classList.toggle('show', checked)
+  if (checked) {
+    const n = parseInt(document.getElementById('missingSlider').value)
+    renderMissingBalls(n)
+  }
+  renderGrid()
+}
+
+function weightedSample(pool, weights, count) {
+  const result = [], rem = [...pool], w = [...weights]
+  for (let i = 0; i < count; i++) {
+    const total = w.reduce((a, b) => a + b, 0)
+    let r = Math.random() * total, idx = 0
+    while (r > w[idx]) { r -= w[idx]; idx++ }
+    result.push(rem[idx]); rem.splice(idx, 1); w.splice(idx, 1)
+  }
+  return result
+}
+
+// 7열 그리드 기준 패턴 감지
+function isPatternGame(nums) {
+  const s = new Set(nums)
+  const n = nums
+
+  // 1. 가로 일렬 (같은 행, 연속 4개 이상)
+  const rows = []
+  for (let r = 0; r < 7; r++) {
+    const rowNums = []
+    for (let c = 0; c < 7; c++) {
+      const v = r * 7 + c + 1
+      if (v <= 45 && s.has(v)) rowNums.push(v)
+    }
+    if (rowNums.length >= 4) return '가로 일렬'
+  }
+
+  // 2. 세로 일렬 (같은 열, 4개 이상)
+  for (let c = 0; c < 7; c++) {
+    let cnt = 0
+    for (let r = 0; r < 7; r++) { const v = r*7+c+1; if (v<=45 && s.has(v)) cnt++ }
+    if (cnt >= 4) return '세로 일렬'
+  }
+
+  // 3. 대각선 ↘ (8씩 증가, 4개 이상 연속)
+  for (let start = 1; start <= 45; start++) {
+    let cnt = 0, v = start
+    while (v <= 45 && s.has(v)) { cnt++; v += 8 }
+    if (cnt >= 4) return '대각선(↘)'
+  }
+
+  // 4. 대각선 ↙ (6씩 증가, 4개 이상 연속)
+  for (let start = 1; start <= 45; start++) {
+    let cnt = 0, v = start
+    const startCol = (start - 1) % 7
+    while (v <= 45 && s.has(v) && (v-1)%7 <= startCol) { cnt++; v += 6 }
+    if (cnt >= 4) return '대각선(↙)'
+  }
+
+  // 5. 등차수열 (일정 간격 4개 이상)
+  const sorted = [...nums].sort((a,b)=>a-b)
+  for (let i = 0; i < sorted.length - 3; i++) {
+    const diff = sorted[i+1] - sorted[i]
+    if (diff < 1) continue
+    let cnt = 2
+    for (let j = i+2; j < sorted.length; j++) {
+      if (sorted[j] - sorted[j-1] === diff) cnt++
+      else break
+    }
+    if (cnt >= 4 && diff <= 8) return `등차수열(+${diff})`
+  }
+
+  // 6. 연속 번호 4개 이상
+  let streak = 1, maxStreak = 1
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i] === sorted[i-1] + 1) streak++
+    else streak = 1
+    maxStreak = Math.max(maxStreak, streak)
+  }
+  if (maxStreak >= 4) return '연속 번호 4개 이상'
+
+  // 7. X자 패턴 (두 대각선 교차)
+  const diag1 = [1,9,17,25,33,41]
+  const diag2 = [7,13,19,25,31,37]
+  const matchD1 = diag1.filter(v => s.has(v)).length
+  const matchD2 = diag2.filter(v => s.has(v)).length
+  if (matchD1 >= 3 && matchD2 >= 3) return 'X자 패턴'
+
+  return null
+}
+
+function generate() {
+  const draws = getDraws()
+  const freq = getFreq(draws)
+  const gameCount = parseInt(document.getElementById('gameCount').value) || 5
+  const useMissing = document.getElementById('useMissing').checked
+  const missingN = parseInt(document.getElementById('missingSlider').value) || 10
+  const missingNums = useMissing ? getMissingNums(missingN) : []
+  const useExclude = document.getElementById('useExclude').checked
+  const excludeN = parseInt(document.getElementById('excludeSlider').value) || 5
+  const excludeNums = useExclude ? new Set(getExcludeNums(excludeN)) : new Set()
+  const fixed = Array.from(fixedNums)
+
+  const games = []
+  const patternLog = []
+  for (let g = 0; g < gameCount; g++) {
+    let chosen, pattern, attempts = 0
+    const detected = []
+    do {
+      chosen = [...fixed]
+      const pool = Array.from({length: 45}, (_, i) => i + 1).filter(n => !chosen.includes(n) && !excludeNums.has(n))
+      const weights = pool.map(n => {
+        let w = freq[n] + 1
+        if (missingNums.includes(n)) w *= 3
+        return w
+      })
+      chosen = [...chosen, ...weightedSample(pool, weights, 6 - chosen.length)].sort((a, b) => a - b)
+      pattern = isPatternGame(chosen)
+      if (pattern) detected.push(pattern)
+      attempts++
+    } while (pattern && attempts < 100)
+    games.push(chosen)
+    patternLog.push({ attempts, detected: [...new Set(detected)] })
+  }
+
+  const container = document.getElementById('resultGames')
+  const latest = allDraws[allDraws.length - 1]?.round || ''
+  container.innerHTML = `<p class="stats-txt">기준: ${draws.length}회차 (최신 ${latest}회) · 고정: ${fixed.length ? fixed.join(', ') : '없음'}</p>`
+    + games.map((nums, i) => `
+    <div class="game-item">
+      <div class="game-label">게임 ${i + 1}</div>
+      <div class="balls">${nums.map(n => `<div class="ball ${fixed.includes(n) ? 'fixed' : ''}" style="background:${ballColor(n)}">${n}</div>`).join('')}</div>
+    </div>`).join('')
+    + (patternLog.some(p => p.attempts > 1) ? `<div style="margin-top:12px;padding:10px 14px;background:#fffaf0;border-radius:10px;border:1px solid #f6e05e;font-size:0.75rem;color:#744210;text-align:left">
+      <b>추출 로그</b><br>${patternLog.map((p, i) => p.attempts > 1 ? `게임 ${i+1}: ${p.detected.join(', ')} 감지 → ${p.attempts}회 재추출` : '').filter(Boolean).join('<br>')}
+    </div>` : '')
+
+  document.getElementById('result').classList.add('show')
+  document.getElementById('result').scrollIntoView({ behavior: 'smooth' })
+}
+
+loadData()
+</script>
+</body>
+</html>

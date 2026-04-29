@@ -340,49 +340,19 @@ async function loadData() {
   const statusEl = document.createElement('div')
   statusEl.id = 'loadStatus'
   statusEl.style.cssText = 'text-align:center;padding:20px;color:#718096;font-size:0.9rem;'
-  statusEl.textContent = '최신 회차 확인 중...'
+  statusEl.textContent = '데이터 로드 중...'
   document.querySelector('h1').after(statusEl)
 
   try {
-    // 1. 최신 회차 파악 (현재 엑셀 기준 최신 + API 확인)
-    // lotto_data.json에서 기존 데이터 로드
-    const baseRes = await fetch('./lotto_data.json')
-    const baseDraws = await baseRes.json()
-    baseDraws.sort((a, b) => a.round - b.round)
-    let latestLocal = baseDraws[baseDraws.length - 1].round
-
-    // 2. API로 최신 회차 이후 데이터 추가 수집
-    const newDraws = []
-    let round = latestLocal + 1
-    statusEl.textContent = `최신 데이터 확인 중... (${latestLocal}회차 이후)`
-
-    while (true) {
-      try {
-        const r = await fetch(`/lotto-api/?srchLtEpsd=${round}`)
-        const data = await r.json()
-        const list = data?.data?.list
-        if (!list || list.length === 0) break
-        const d = list[0]
-        if (!d.tm1WnNo) break
-        newDraws.push({
-          round: d.ltEpsd,
-          numbers: [d.tm1WnNo, d.tm2WnNo, d.tm3WnNo, d.tm4WnNo, d.tm5WnNo, d.tm6WnNo].map(Number).sort((a,b)=>a-b)
-        })
-        round++
-      } catch { break }
-    }
-
-    allDraws = [...baseDraws, ...newDraws]
+    const res = await fetch('./lotto_data.json')
+    allDraws = await res.json()
     allDraws.sort((a, b) => a.round - b.round)
-
     const latest = allDraws[allDraws.length - 1]
     statusEl.textContent = `✅ ${allDraws.length}회차 데이터 로드 완료 (최신: ${latest.round}회 · ${latest.numbers.join(', ')})`
     statusEl.style.color = '#38a169'
   } catch (e) {
-    statusEl.textContent = '⚠️ 데이터 로드 실패. 기존 데이터 사용 중.'
+    statusEl.textContent = '⚠️ 데이터 로드 실패.'
     statusEl.style.color = '#e53e3e'
-    const baseRes = await fetch('./lotto_data.json')
-    allDraws = await baseRes.json()
   }
 
   renderGrid()

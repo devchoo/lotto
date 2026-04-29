@@ -248,24 +248,43 @@ function toggleExclude() {
 
 let droughtData = []
 
+function buildDroughtData(minGap = 1) {
+  const draws = [...allDraws].sort((a, b) => a.round - b.round)
+  const lastSeen = {}
+  const results = []
+  draws.forEach((d, idx) => {
+    const nums = new Set(d.numbers)
+    const drought = []
+    for (const n of nums) {
+      if (n in lastSeen) {
+        const gap = idx - lastSeen[n] - 1
+        if (gap >= minGap) drought.push({ num: n, gap })
+      }
+    }
+    if (drought.length >= 1) {
+      results.push({
+        round: d.round,
+        numbers: [...d.numbers].sort((a,b)=>a-b),
+        drought: drought.sort((a,b)=>b.gap-a.gap)
+      })
+    }
+    for (const n of nums) lastSeen[n] = idx
+  })
+  return results
+}
+
 async function loadDroughtData() {
-  try {
-    const res = await fetch('./drought_data.json')
-    droughtData = await res.json()
-    renderDrought()
-  } catch {}
+  // drought는 allDraws 기반 실시간 계산
+  renderDrought()
 }
 
 function renderDrought() {
   const minGap = parseInt(document.getElementById('droughtMin').value)
   const minCount = parseInt(document.getElementById('droughtCount').value)
-  const filtered = droughtData
-    .map(r => ({
-      ...r,
-      drought: r.drought.filter(d => d.gap >= minGap)
-    }))
+  const allResults = buildDroughtData(minGap)
+  const filtered = allResults
     .filter(r => r.drought.length >= minCount)
-    .slice(-50).reverse()  // 최신 50개, 최신순
+    .slice(-50).reverse()
 
   const el = document.getElementById('droughtList')
   if (!filtered.length) { el.innerHTML = '<span style="color:#a0aec0">해당 조건의 회차가 없습니다</span>'; return }

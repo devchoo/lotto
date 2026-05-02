@@ -344,7 +344,7 @@ async function loadData() {
   document.querySelector('h1').after(statusEl)
 
   try {
-    const res = await fetch('./lotto_data.json')
+    const res = await fetch('./lotto_data.json?v=' + Date.now(), { cache: 'no-store' })
     allDraws = await res.json()
     allDraws.sort((a, b) => a.round - b.round)
     const latest = allDraws[allDraws.length - 1]

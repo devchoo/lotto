@@ -349,7 +349,7 @@ function renderDrought() {
         <span style="font-size:0.75rem;color:#718096;margin-right:6px">${r.round}회</span>${balls}
         <div style="font-size:0.72rem;color:#e53e3e;margin-top:3px">공백 복구: ${info}</div>
         ${otherInfo ? `<div style="font-size:0.7rem;color:#718096;margin-top:2px">나머지: ${otherInfo}</div>` : ''}
-        ${r.silent && r.silent.length ? `<div style="font-size:0.7rem;color:#9f7aea;margin-top:2px">조건 콜대 침묵: ${r.silent.map(s=>`${s.num}(${s.gap}회째)`).join(' · ')}</div>` : ''}
+        ${r.silent && r.silent.length ? `<div style="font-size:0.7rem;color:#9f7aea;margin-top:2px">N회 이상 미출현: ${r.silent.map(s=>`${s.num}(${s.gap}회째)`).join(' · ')}</div>` : ''}
       </div>`
     }).join('')
 }

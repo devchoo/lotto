@@ -158,13 +158,22 @@
       <button class="sort-btn active" onclick="sortBalls('num')">번호순</button>
       <button class="sort-btn" onclick="sortBalls('freq')">빈도순</button>
     </div>
-    <label style="font-size:0.82rem;color:#4a5568;margin:0;gap:6px">
-      <input type="checkbox" id="showConsecTag" onchange="renderGrid()">
-      연속 출현 표시
-    </label>
+    <div style="display:flex;align-items:center;gap:8px">
+      <span id="clickModeLabel" style="font-size:0.82rem;color:#667eea;font-weight:600">포함</span>
+      <label style="position:relative;display:inline-block;width:44px;height:24px;margin:0">
+        <input type="checkbox" id="clickModeSwitch" onchange="toggleClickMode()" style="opacity:0;width:0;height:0">
+        <span style="position:absolute;cursor:pointer;inset:0;background:#667eea;border-radius:24px;transition:.3s" id="switchTrack"></span>
+        <span style="position:absolute;content:'';height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s" id="switchThumb"></span>
+      </label>
+      <span style="font-size:0.82rem;color:#fc8181;font-weight:600">제외</span>
+    </div>
   </div>
+  <label style="font-size:0.82rem;color:#4a5568;margin-bottom:6px">
+    <input type="checkbox" id="showConsecTag" onchange="renderGrid()">
+    연속 출현 표시
+  </label>
   <div class="freq-grid" id="freqGrid"></div>
-  <p class="hint">번호 탭 → 고정 포함 (최대 5개)</p>
+  <p class="hint">번호 탭 → 포함/제외 설정 (포함 최대 5개)</p>
 </div>
 
 <!-- 가뭄 후 복귀 회차 분석 -->
@@ -219,6 +228,7 @@
 </div>
 
 <button class="btn" onclick="generate()">🎰 번호 추출</button>
+<div id="fixedOddEvenWarn" style="display:none;margin-top:10px;padding:10px 14px;background:#fffaf0;border:1.5px solid #f6d860;border-radius:10px;font-size:0.82rem;color:#744210;"></div>
 <div id="excludeWarnMsg" style="display:none;margin-top:10px;padding:10px 14px;background:#fff5f5;border:1.5px solid #fc8181;border-radius:10px;font-size:0.82rem;color:#c53030;"></div>
 
 <div class="card result" id="result" style="margin-top:14px; text-align:center;">
@@ -437,7 +447,8 @@ function renderGrid() {
     const pct = total > 0 ? (freq[n] / total * 100).toFixed(2) : '0.00'
     const isFixed = fixedNums.has(n)
     const isMissing = missingSet.has(n)
-    const isExcluded = excludeSet.has(n)
+    const isExcluded = excludeSet.has(n) || manualExclude.has(n)
+    const isManualExclude = manualExclude.has(n)
     const streakTag = showConsec && maxStreak[n] >= 2
       ? `<span style="position:absolute;top:-6px;left:-4px;background:#9f7aea;color:#fff;font-size:0.45rem;border-radius:4px;padding:1px 3px;font-weight:700">${maxStreak[n]}연속</span>`
       : ''
@@ -446,17 +457,29 @@ function renderGrid() {
       <span class="num" style="${isFixed ? '' : `color:${ballColor(n)}`}">${n}</span>
       <span class="freq-pct">${pct}%</span>
       ${isFixed ? '<div class="badge">★</div>' : ''}
+      ${isManualExclude ? '<div class="badge" style="background:#fc8181">✕</div>' : ''}
     </div>`
   }).join('')
 }
 
 function toggleFixed(n) {
-  if (fixedNums.has(n)) { fixedNums.delete(n) }
-  else {
-    if (fixedNums.size >= 5) { alert('고정 번호는 최대 5개입니다.'); return }
-    fixedNums.add(n)
+  if (clickMode === 'exclude') {
+    if (manualExclude.has(n)) manualExclude.delete(n)
+    else { fixedNums.delete(n); manualExclude.add(n) }
+  } else {
+    if (manualExclude.has(n)) manualExclude.delete(n)
+    if (fixedNums.has(n)) { fixedNums.delete(n) }
+    else {
+      if (fixedNums.size >= 5) { alert('고정 번호는 최대 5개입니다.'); return }
+      fixedNums.add(n)
+    }
+    // 홈짝 비율 경고 업데이트
+    const warn = checkFixedOddEven()
+    const el = document.getElementById('fixedOddEvenWarn')
+    if (el) { el.style.display = warn ? 'block' : 'none'; if (warn) el.textContent = '⚠️ ' + warn }
   }
   renderGrid()
+  renderConsecIfNeeded()
 }
 
 function sortBalls(mode) {
@@ -565,9 +588,39 @@ function isPatternGame(nums) {
 }
 
 let oddEvenMode = 'free'
+let clickMode = 'include'  // 'include' | 'exclude'
+let manualExclude = new Set()
+
+function toggleClickMode() {
+  clickMode = document.getElementById('clickModeSwitch').checked ? 'exclude' : 'include'
+  const thumb = document.getElementById('switchThumb')
+  thumb.style.transform = clickMode === 'exclude' ? 'translateX(20px)' : 'translateX(0)'
+  renderGrid()
+}
+
+function checkFixedOddEven() {
+  if (oddEvenMode === 'free' || fixedNums.size === 0) return null
+  const fixed = Array.from(fixedNums)
+  const [reqOdd, reqEven] = oddEvenMode.split('_').map(Number)
+  const fixedOdd = fixed.filter(n => n % 2 === 1).length
+  const fixedEven = fixed.filter(n => n % 2 === 0).length
+  const remaining = 6 - fixed.length
+  // 구조적으로 비율 맞충 가능 여부 체크
+  if (fixedOdd > reqOdd || fixedEven > reqEven) {
+    return `고정 번호의 홈짝 구성(홈${fixedOdd}/짝${fixedEven})이 선택한 비율(홈${reqOdd}:짝${reqEven})로 맞충 불가`
+  }
+  return null
+}
+
+function renderConsecIfNeeded() {
+  // consec 그리드가 있으면 갱신 (현재는 없으므로 빈 함수)
+}
 
 function setOddEven(mode) {
   oddEvenMode = mode
+  const warn = checkFixedOddEven()
+  const el = document.getElementById('fixedOddEvenWarn')
+  if (el) { el.style.display = warn ? 'block' : 'none'; if (warn) el.textContent = '⚠️ ' + warn }
 }
 
 function checkOddEven(nums) {
@@ -587,7 +640,7 @@ function generate() {
   const missingNums = useMissing ? getMissingNums(missingN) : []
   const useExclude = document.getElementById('useExclude').checked
   const excludeN = parseInt(document.getElementById('excludeSlider').value) || 5
-  const excludeNums = useExclude ? new Set(getExcludeNums(excludeN)) : new Set()
+  const excludeNums = useExclude ? new Set([...getExcludeNums(excludeN), ...manualExclude]) : new Set(manualExclude)
   const fixed = Array.from(fixedNums)
 
   // 제외 번호 경고 체크

@@ -219,6 +219,7 @@
 </div>
 
 <button class="btn" onclick="generate()">🎰 번호 추출</button>
+<div id="excludeWarnMsg" style="display:none;margin-top:10px;padding:10px 14px;background:#fff5f5;border:1.5px solid #fc8181;border-radius:10px;font-size:0.82rem;color:#c53030;"></div>
 
 <div class="card result" id="result" style="margin-top:14px; text-align:center;">
   <h2>추출 결과</h2>
@@ -588,6 +589,20 @@ function generate() {
   const excludeN = parseInt(document.getElementById('excludeSlider').value) || 5
   const excludeNums = useExclude ? new Set(getExcludeNums(excludeN)) : new Set()
   const fixed = Array.from(fixedNums)
+
+  // 제외 번호 경고 체크
+  const available = Array.from({length: 45}, (_, i) => i + 1).filter(n => !excludeNums.has(n) && !fixedNums.has(n))
+  const warnEl = document.getElementById('excludeWarnMsg')
+  if (available.length < (6 - fixed.length)) {
+    warnEl.style.display = 'block'
+    warnEl.textContent = `⚠️ 제외 번호가 너무 많아 추출이 불가합니다. (남은 번호 ${available.length}개, 필요 ${6 - fixed.length}개)`
+    return
+  } else if (available.length < 10) {
+    warnEl.style.display = 'block'
+    warnEl.textContent = `⚠️ 제외 번호가 많아 다양한 조합이 어렵습니다. (남은 번호 ${available.length}개)`
+  } else {
+    warnEl.style.display = 'none'
+  }
 
   const games = []
   const patternLog = []

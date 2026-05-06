@@ -399,7 +399,17 @@ async function loadData() {
     allDraws = await res.json()
     allDraws.sort((a, b) => a.round - b.round)
     const latest = allDraws[allDraws.length - 1]
-    statusEl.textContent = `✅ ${allDraws.length}회차 데이터 로드 완료 (최신: ${latest.round}회 · ${latest.numbers.join(', ')})`
+    statusEl.innerHTML = `
+      <div>✅ ${allDraws.length}회차 데이터 로드 완료</div>
+      <div style="margin-top:6px;font-size:0.82rem;color:#4a5568">최신 ${latest.round}회</div>
+      <div style="margin-top:6px;display:flex;justify-content:center;gap:6px;flex-wrap:wrap">
+        ${latest.numbers.map(n => {
+          const colors = ['#f6ad55','#68d391','#63b3ed','#fc8181','#b794f4']
+          const c = n<=10?colors[0]:n<=20?colors[1]:n<=30?colors[2]:n<=40?colors[3]:colors[4]
+          return `<span style="width:36px;height:36px;border-radius:50%;background:${c};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem">${n}</span>`
+        }).join('')}
+      </div>
+    `
     statusEl.style.color = '#38a169'
   } catch (e) {
     statusEl.textContent = '⚠️ 데이터 로드 실패.'

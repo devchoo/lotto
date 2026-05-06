@@ -287,17 +287,27 @@ function buildDroughtData(minGap = 1) {
   draws.forEach((d, idx) => {
     const nums = new Set(d.numbers)
     const drought = []
+    const allGaps = []
     for (const n of nums) {
-      if (n in lastSeen) {
+      const gap = n in lastSeen ? idx - lastSeen[n] - 1 : null
+      allGaps.push({ num: n, gap })
+      if (gap !== null && gap >= minGap) drought.push({ num: n, gap })
+    }
+    // 이 회차에 안 나온 번호 중 minGap 이상 쳨륨 중인 번호
+    const silentNums = []
+    for (let n = 1; n <= 45; n++) {
+      if (!nums.has(n) && n in lastSeen) {
         const gap = idx - lastSeen[n] - 1
-        if (gap >= minGap) drought.push({ num: n, gap })
+        if (gap >= minGap) silentNums.push({ num: n, gap })
       }
     }
     if (drought.length >= 1) {
       results.push({
         round: d.round,
         numbers: [...d.numbers].sort((a,b)=>a-b),
-        drought: drought.sort((a,b)=>b.gap-a.gap)
+        drought: drought.sort((a,b)=>b.gap-a.gap),
+        allGaps: allGaps.sort((a,b)=>a.num-b.num),
+        silent: silentNums.sort((a,b)=>b.gap-a.gap)
       })
     }
     for (const n of nums) lastSeen[n] = idx
@@ -327,10 +337,19 @@ function renderDrought() {
         const isDrought = r.drought.some(d => d.num === n)
         return `<span style="display:inline-block;background:${isDrought ? '#fc8181' : '#edf2f7'};color:${isDrought ? '#fff' : '#4a5568'};border-radius:50%;width:26px;height:26px;text-align:center;line-height:26px;font-size:0.78rem;font-weight:700;margin:1px">${n}</span>`
       }).join('')
-      const info = r.drought.map(d => `<span style="color:#e53e3e">${d.num}</span>(${d.gap}회)`).join(', ')
+      const info = r.drought.map(d => `<span style="color:#e53e3e">${d.num}</span>(${d.gap}회 공백)`).join(', ')
+      // 나머지 번호(drought 아닌 것) 공백 정보
+      const otherGaps = (r.allGaps || []).filter(g => !r.drought.some(d => d.num === g.num))
+      const otherInfo = otherGaps.map(g => `${g.num}(${g.gap !== null ? g.gap + '회 만에' : '첫 출현'})`).join(' · ')
+      // 최소 공백 이상 안 나온 번호
+      const stillMissing = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45]
+        .filter(n => !r.numbers.includes(n))
+      // 이 회차 전까지 침묵한 번호 찾아야 하는데 buildDroughtData에서 lastSeen 정보를 저장하지 않아서 생략
       return `<div style="padding:8px 0;border-bottom:1px solid #f0f4f8">
         <span style="font-size:0.75rem;color:#718096;margin-right:6px">${r.round}회</span>${balls}
-        <div style="font-size:0.72rem;color:#718096;margin-top:3px">공백 복구: ${info}</div>
+        <div style="font-size:0.72rem;color:#e53e3e;margin-top:3px">공백 복구: ${info}</div>
+        ${otherInfo ? `<div style="font-size:0.7rem;color:#718096;margin-top:2px">나머지: ${otherInfo}</div>` : ''}
+        ${r.silent && r.silent.length ? `<div style="font-size:0.7rem;color:#9f7aea;margin-top:2px">조건 콜대 침묵: ${r.silent.map(s=>`${s.num}(${s.gap}회째)`).join(' · ')}</div>` : ''}
       </div>`
     }).join('')
 }

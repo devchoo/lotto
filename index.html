@@ -99,13 +99,12 @@
 <!-- 데이터 범위 -->
 <div class="card">
   <h2>데이터 범위</h2>
-  <label>
-    <input type="checkbox" id="useAll" checked onchange="toggleRange()">
-    전체 회차 사용
-  </label>
-  <div class="range-wrap" id="rangeWrap">
-    최근 <input type="number" id="recentN" value="100" min="10" max="1221" style="width:70px"> 회차만
+  <div style="display:flex;justify-content:space-between;font-size:0.82rem;color:#4a5568;margin-bottom:5px">
+    <span>최근 <span id="recentNVal">100</span>회차</span>
+    <span id="recentNAllLabel" style="color:#38a169;font-weight:600;display:none">전체 회차</span>
   </div>
+  <input type="range" id="recentNSlider" min="50" max="1222" value="100" step="10" oninput="onRangeSlider()" style="width:100%;accent-color:#667eea">
+  <div style="display:flex;justify-content:space-between;font-size:0.7rem;color:#a0aec0;margin-top:2px"><span>50</span><span>전체</span></div>
 </div>
 
 <!-- 미출현 번호 -->
@@ -421,9 +420,11 @@ async function loadData() {
 }
 
 function getDraws() {
-  if (document.getElementById('useAll').checked) return allDraws
-  const n = parseInt(document.getElementById('recentN').value) || 100
-  return allDraws.slice(-n)
+  const slider = document.getElementById('recentNSlider')
+  const max = allDraws.length || 1222
+  const v = parseInt(slider?.value || max)
+  if (v >= max) return allDraws
+  return allDraws.slice(-v)
 }
 
 function getFreq(draws) {
@@ -519,10 +520,19 @@ function sortBalls(mode) {
   renderGrid()
 }
 
-function toggleRange() {
-  const useAll = document.getElementById('useAll').checked
-  document.getElementById('rangeWrap').classList.toggle('show', !useAll)
+function onRangeSlider() {
+  const slider = document.getElementById('recentNSlider')
+  const max = allDraws.length || 1222
+  slider.max = max
+  const v = parseInt(slider.value)
+  const isAll = v >= max
+  const label = document.getElementById('recentNAllLabel')
+  const valWrap = document.getElementById('recentNVal').parentElement
+  document.getElementById('recentNVal').textContent = v
+  if (label) label.style.display = isAll ? 'inline' : 'none'
+  if (valWrap) valWrap.style.display = isAll ? 'none' : 'flex'
   renderGrid()
+  renderDrought()
 }
 
 function toggleMissing() {

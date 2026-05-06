@@ -197,16 +197,16 @@
   <div id="droughtList" style="font-size:0.82rem;color:#4a5568;max-height:300px;overflow-y:auto"></div>
 </div>
 
-<!-- 홈짝 비율 -->
+<!-- 홀짝 비율 -->
 <div class="card">
-  <h2>홈짝 비율</h2>
+  <h2>홀짝 비율</h2>
   <select id="oddEvenSelect" onchange="setOddEven(this.value)" style="border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:0.9rem;width:100%;background:#fff">
     <option value="free">자유 (제한 없음)</option>
-    <option value="3_3">홈수 3 : 짝수 3</option>
-    <option value="4_2">홈수 4 : 짝수 2</option>
-    <option value="2_4">홈수 2 : 짝수 4</option>
-    <option value="5_1">홈수 5 : 짝수 1</option>
-    <option value="1_5">홈수 1 : 짝수 5</option>
+    <option value="3_3">홀수 3 : 짝수 3</option>
+    <option value="4_2">홀수 4 : 짝수 2</option>
+    <option value="2_4">홀수 2 : 짝수 4</option>
+    <option value="5_1">홀수 5 : 짝수 1</option>
+    <option value="1_5">홀수 1 : 짝수 5</option>
   </select>
 </div>
 
@@ -473,7 +473,7 @@ function toggleFixed(n) {
       if (fixedNums.size >= 5) { alert('고정 번호는 최대 5개입니다.'); return }
       fixedNums.add(n)
     }
-    // 홈짝 비율 경고 업데이트
+    // 홀짝 비율 경고 업데이트
     const warn = checkFixedOddEven()
     const el = document.getElementById('fixedOddEvenWarn')
     if (el) { el.style.display = warn ? 'block' : 'none'; if (warn) el.textContent = '⚠️ ' + warn }
@@ -607,7 +607,7 @@ function checkFixedOddEven() {
   const remaining = 6 - fixed.length
   // 구조적으로 비율 맞충 가능 여부 체크
   if (fixedOdd > reqOdd || fixedEven > reqEven) {
-    return `고정 번호의 홈짝 구성(홈${fixedOdd}/짝${fixedEven})이 선택한 비율(홈${reqOdd}:짝${reqEven})로 맞충 불가`
+    return `고정 번호의 홀짝 구성(홈${fixedOdd}/짝${fixedEven})이 선택한 비율(홈${reqOdd}:짝${reqEven})로 맞충 불가`
   }
   return null
 }

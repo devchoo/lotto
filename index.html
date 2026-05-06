@@ -188,6 +188,19 @@
   <div id="droughtList" style="font-size:0.82rem;color:#4a5568;max-height:300px;overflow-y:auto"></div>
 </div>
 
+<!-- 홈짝 비율 -->
+<div class="card">
+  <h2>홈짝 비율</h2>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="sort-btn active" id="oddEven_free" onclick="setOddEven('free')">자유</button>
+    <button class="sort-btn" id="oddEven_3_3" onclick="setOddEven('3_3')">홈수 3 : 짝수 3</button>
+    <button class="sort-btn" id="oddEven_4_2" onclick="setOddEven('4_2')">홈수 4 : 짝수 2</button>
+    <button class="sort-btn" id="oddEven_2_4" onclick="setOddEven('2_4')">홈수 2 : 짝수 4</button>
+    <button class="sort-btn" id="oddEven_5_1" onclick="setOddEven('5_1')">홈수 5 : 짝수 1</button>
+    <button class="sort-btn" id="oddEven_1_5" onclick="setOddEven('1_5')">홈수 1 : 짝수 5</button>
+  </div>
+</div>
+
 <!-- 게임 수 -->
 <div class="card">
   <h2>추출 게임 수</h2>
@@ -542,6 +555,22 @@ function isPatternGame(nums) {
   return null
 }
 
+let oddEvenMode = 'free'
+
+function setOddEven(mode) {
+  oddEvenMode = mode
+  document.querySelectorAll('[id^="oddEven_"]').forEach(b => b.classList.remove('active'))
+  document.getElementById('oddEven_' + mode).classList.add('active')
+}
+
+function checkOddEven(nums) {
+  if (oddEvenMode === 'free') return true
+  const odd = nums.filter(n => n % 2 === 1).length
+  const even = 6 - odd
+  const [reqOdd, reqEven] = oddEvenMode.split('_').map(Number)
+  return odd === reqOdd && even === reqEven
+}
+
 function generate() {
   const draws = getDraws()
   const freq = getFreq(draws)
@@ -568,7 +597,7 @@ function generate() {
         return w
       })
       chosen = [...chosen, ...weightedSample(pool, weights, 6 - chosen.length)].sort((a, b) => a - b)
-      pattern = isPatternGame(chosen)
+      pattern = isPatternGame(chosen) || (!checkOddEven(chosen) ? '홀짝비율' : null)
       if (pattern) detected.push(pattern)
       attempts++
     } while (pattern && attempts < 100)

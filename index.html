@@ -191,23 +191,31 @@
 <!-- 홈짝 비율 -->
 <div class="card">
   <h2>홈짝 비율</h2>
-  <div style="display:flex;gap:8px;flex-wrap:wrap">
-    <button class="sort-btn active" id="oddEven_free" onclick="setOddEven('free')">자유</button>
-    <button class="sort-btn" id="oddEven_3_3" onclick="setOddEven('3_3')">홈수 3 : 짝수 3</button>
-    <button class="sort-btn" id="oddEven_4_2" onclick="setOddEven('4_2')">홈수 4 : 짝수 2</button>
-    <button class="sort-btn" id="oddEven_2_4" onclick="setOddEven('2_4')">홈수 2 : 짝수 4</button>
-    <button class="sort-btn" id="oddEven_5_1" onclick="setOddEven('5_1')">홈수 5 : 짝수 1</button>
-    <button class="sort-btn" id="oddEven_1_5" onclick="setOddEven('1_5')">홈수 1 : 짝수 5</button>
-  </div>
+  <select id="oddEvenSelect" onchange="setOddEven(this.value)" style="border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:0.9rem;width:100%;background:#fff">
+    <option value="free">자유 (제한 없음)</option>
+    <option value="3_3">홈수 3 : 짝수 3</option>
+    <option value="4_2">홈수 4 : 짝수 2</option>
+    <option value="2_4">홈수 2 : 짝수 4</option>
+    <option value="5_1">홈수 5 : 짝수 1</option>
+    <option value="1_5">홈수 1 : 짝수 5</option>
+  </select>
 </div>
 
 <!-- 게임 수 -->
 <div class="card">
   <h2>추출 게임 수</h2>
-  <label>
-    게임 수
-    <input type="number" id="gameCount" value="5" min="1" max="20" style="width:70px">
-  </label>
+  <select id="gameCount" style="border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:0.9rem;width:100%;background:#fff">
+    <option value="1">1게임</option>
+    <option value="2">2게임</option>
+    <option value="3">3게임</option>
+    <option value="4">4게임</option>
+    <option value="5" selected>5게임</option>
+    <option value="6">6게임</option>
+    <option value="7">7게임</option>
+    <option value="8">8게임</option>
+    <option value="9">9게임</option>
+    <option value="10">10게임</option>
+  </select>
 </div>
 
 <button class="btn" onclick="generate()">🎰 번호 추출</button>
@@ -559,8 +567,6 @@ let oddEvenMode = 'free'
 
 function setOddEven(mode) {
   oddEvenMode = mode
-  document.querySelectorAll('[id^="oddEven_"]').forEach(b => b.classList.remove('active'))
-  document.getElementById('oddEven_' + mode).classList.add('active')
 }
 
 function checkOddEven(nums) {

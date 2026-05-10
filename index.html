@@ -692,6 +692,7 @@ function openStats() {
   document.getElementById('statsContent').innerHTML = buildStats()
   overlay.style.display = 'block'
   sheet.style.display = 'block'
+  document.body.style.overflow = 'hidden'
   sheet.style.transition = 'transform 0.32s cubic-bezier(.32,1,.55,1)'
   requestAnimationFrame(() => requestAnimationFrame(() => { sheet.style.transform = 'translateY(0)' }))
   const handle = document.getElementById('statsHandle')
@@ -704,6 +705,7 @@ function closeStats() {
   const sheet = document.getElementById('statsSheet')
   sheet.style.transition = 'transform 0.32s cubic-bezier(.32,1,.55,1)'
   sheet.style.transform = 'translateY(100%)'
+  document.body.style.overflow = ''
   setTimeout(() => {
     sheet.style.display = 'none'
     document.getElementById('statsOverlay').style.display = 'none'

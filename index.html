@@ -94,7 +94,22 @@
 </head>
 <body>
 
-<h1>🎱 로또 번호 추출기</h1>
+<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:20px">
+  <h1 style="margin:0">🎱 로또 번호 추출기</h1>
+  <button onclick="openStats()" style="background:#667eea;color:#fff;border:none;border-radius:20px;padding:5px 12px;font-size:0.75rem;font-weight:600;cursor:pointer;white-space:nowrap">📊 통계</button>
+</div>
+
+<!-- 통계 바텀시트 -->
+<div id="statsOverlay" onclick="closeStats()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:100"></div>
+<div id="statsSheet" style="display:none;position:fixed;left:0;right:0;bottom:0;z-index:101;background:#fff;border-radius:20px 20px 0 0;max-height:80vh;overflow-y:auto;transform:translateY(100%);transition:transform 0.35s cubic-bezier(.32,1,.6,1)">
+  <div id="statsHandle" style="padding:12px;text-align:center;cursor:grab">
+    <div style="width:36px;height:4px;background:#e2e8f0;border-radius:2px;margin:0 auto"></div>
+  </div>
+  <div style="padding:0 18px 40px">
+    <h2 style="font-size:1rem;font-weight:700;color:#1a202c;margin-bottom:16px">📊 로또 통계</h2>
+    <div id="statsContent"></div>
+  </div>
+</div>
 
 <!-- 데이터 범위 -->
 <div class="card">
@@ -653,6 +668,145 @@ function checkFixedOddEven() {
 
 function renderConsecIfNeeded() {
   // consec 그리드가 있으면 갱신 (현재는 없으므로 빈 함수)
+}
+
+// ===== 통계 바텀시트 =====
+let statsStartY = 0, statsStartT = 0
+
+function openStats() {
+  const sheet = document.getElementById('statsSheet')
+  const overlay = document.getElementById('statsOverlay')
+  document.getElementById('statsContent').innerHTML = buildStats()
+  overlay.style.display = 'block'
+  sheet.style.display = 'block'
+  requestAnimationFrame(() => { sheet.style.transform = 'translateY(0)' })
+  // 드래그 닫기
+  const handle = document.getElementById('statsHandle')
+  handle.addEventListener('touchstart', statsDragStart, { passive: true })
+  sheet.addEventListener('touchmove', statsDragMove, { passive: true })
+  sheet.addEventListener('touchend', statsDragEnd)
+}
+
+function closeStats() {
+  const sheet = document.getElementById('statsSheet')
+  sheet.style.transform = 'translateY(100%)'
+  setTimeout(() => {
+    sheet.style.display = 'none'
+    document.getElementById('statsOverlay').style.display = 'none'
+  }, 350)
+}
+
+function statsDragStart(e) { statsStartY = e.touches[0].clientY; statsStartT = Date.now() }
+function statsDragMove(e) {
+  const dy = e.touches[0].clientY - statsStartY
+  if (dy > 0) document.getElementById('statsSheet').style.transform = `translateY(${dy}px)`
+}
+function statsDragEnd(e) {
+  const dy = e.changedTouches[0].clientY - statsStartY
+  const dt = Date.now() - statsStartT
+  if (dy > 80 || (dy > 30 && dt < 250)) closeStats()
+  else document.getElementById('statsSheet').style.transform = 'translateY(0)'
+}
+
+function buildStats() {
+  const draws = [...allDraws].sort((a,b) => a.round - b.round)
+  if (!draws.length) return '<p>데이터 없음</p>'
+  const total = draws.length
+
+  // 번호별 빈도
+  const freq = {}
+  for (let i=1;i<=45;i++) freq[i]=0
+  draws.forEach(d => d.numbers.forEach(n => freq[n]++))
+  const sorted = Object.entries(freq).sort((a,b)=>b[1]-a[1])
+  const top5 = sorted.slice(0,5)
+  const bot5 = sorted.slice(-5).reverse()
+
+  // 홀짝 비율
+  let oddTotal=0, evenTotal=0
+  draws.forEach(d => d.numbers.forEach(n => n%2===1 ? oddTotal++ : evenTotal++))
+  const oddPct = (oddTotal/(oddTotal+evenTotal)*100).toFixed(1)
+
+  // 합계 분석
+  const sums = draws.map(d => d.numbers.reduce((a,b)=>a+b,0))
+  const avgSum = (sums.reduce((a,b)=>a+b,0)/sums.length).toFixed(1)
+  const minSum = Math.min(...sums), maxSum = Math.max(...sums)
+  const minRound = draws[sums.indexOf(minSum)].round
+  const maxRound = draws[sums.indexOf(maxSum)].round
+
+  // 구간별 출현
+  const zones = [[1,10],[11,20],[21,30],[31,40],[41,45]]
+  const zoneLabels = ['1~10','11~20','21~30','31~40','41~45']
+  const zoneCnt = zones.map(([a,b]) => { let c=0; draws.forEach(d=>d.numbers.forEach(n=>{if(n>=a&&n<=b)c++})); return c })
+  const zoneTotal = zoneCnt.reduce((a,b)=>a+b,0)
+
+  // 연속번호 포함 회차
+  let consecCount = 0
+  draws.forEach(d => {
+    const ns = [...d.numbers].sort((a,b)=>a-b)
+    for(let i=0;i<ns.length-1;i++) if(ns[i+1]-ns[i]===1) { consecCount++; return }
+  })
+  const consecPct = (consecCount/total*100).toFixed(1)
+
+  // 가장 긴 공백
+  const maxGap = {}, lastSeen = {}
+  draws.forEach((d,idx) => {
+    d.numbers.forEach(n => {
+      if(n in lastSeen) { const g=idx-lastSeen[n]-1; if(!maxGap[n]||g>maxGap[n]) maxGap[n]=g }
+      lastSeen[n]=idx
+    })
+  })
+  const longestGap = Object.entries(maxGap).sort((a,b)=>b[1]-a[1]).slice(0,3)
+
+  // 같은 번호 조합 쌍 (5개 이상 겹치는)
+  let pair5 = []
+  for(let i=0;i<draws.length;i++) for(let j=i+1;j<draws.length;j++) {
+    const c = draws[i].numbers.filter(n=>draws[j].numbers.includes(n))
+    if(c.length>=5) pair5.push([draws[i].round, draws[j].round, c])
+  }
+
+  function ball(n, bg='#667eea') {
+    const colors=['#f6ad55','#68d391','#63b3ed','#fc8181','#b794f4']
+    const c=n<=10?colors[0]:n<=20?colors[1]:n<=30?colors[2]:n<=40?colors[3]:colors[4]
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:${c};color:#fff;font-weight:800;font-size:0.78rem;margin:2px">${n}</span>`
+  }
+
+  function card(title, content) {
+    return `<div style="background:#f7fafc;border-radius:12px;padding:14px;margin-bottom:12px">
+      <div style="font-size:0.75rem;font-weight:700;color:#718096;margin-bottom:8px;text-transform:uppercase">${title}</div>
+      ${content}
+    </div>`
+  }
+
+  return [
+    card('📊 기본 정보',
+      `<div style="font-size:0.88rem;color:#2d3748">총 <b>${total}</b>회차 데이터 기반</div>`
+    ),
+    card('🔥 많이 나온 번호 TOP 5',
+      top5.map(([n,c])=>`${ball(+n)}<span style="font-size:0.75rem;color:#718096;margin-right:6px">${((c/total)*100).toFixed(1)}%</span>`).join('')
+    ),
+    card('❄️ 적게 나온 번호 BOTTOM 5',
+      bot5.map(([n,c])=>`${ball(+n)}<span style="font-size:0.75rem;color:#718096;margin-right:6px">${((c/total)*100).toFixed(1)}%</span>`).join('')
+    ),
+    card('⚖️ 홀짝 비율',
+      `<div style="font-size:0.88rem;color:#2d3748">홀수 <b>${oddPct}%</b> · 짝수 <b>${(100-oddPct).toFixed(1)}%</b></div>
+       <div style="background:#e2e8f0;border-radius:4px;height:8px;margin-top:6px"><div style="background:#667eea;height:8px;border-radius:4px;width:${oddPct}%"></div></div>`
+    ),
+    card('➕ 번호 합계',
+      `<div style="font-size:0.88rem;color:#2d3748">평균 <b>${avgSum}</b> · 최소 <b>${minSum}</b>(${minRound}회) · 최대 <b>${maxSum}</b>(${maxRound}회)</div>`
+    ),
+    card('🗂 구간별 출현 비율',
+      zoneLabels.map((z,i)=>`<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px"><span style="font-size:0.75rem;color:#4a5568;width:48px">${z}</span><div style="flex:1;background:#e2e8f0;border-radius:4px;height:7px"><div style="background:#63b3ed;height:7px;border-radius:4px;width:${(zoneCnt[i]/zoneTotal*100).toFixed(1)}%"></div></div><span style="font-size:0.72rem;color:#718096;width:36px;text-align:right">${(zoneCnt[i]/zoneTotal*100).toFixed(1)}%</span></div>`).join('')
+    ),
+    card('🔗 연속번호 포함 회차',
+      `<div style="font-size:0.88rem;color:#2d3748">전체의 <b>${consecPct}%</b> (${consecCount}회차)에 연속 번호 포함</div>`
+    ),
+    card('🏜 역대 최장 공백 번호',
+      longestGap.map(([n,g])=>`${ball(+n)}<span style="font-size:0.8rem;color:#718096"> ${g}회 공백 &nbsp;</span>`).join('')
+    ),
+    pair5.length ? card('👯 5개 이상 겹친 쌍',
+      pair5.slice(0,5).map(([a,b,c])=>`<div style="font-size:0.78rem;color:#4a5568;margin-bottom:4px">${a}회 ↔ ${b}회 | 공통: ${c.map(n=>ball(n)).join('')}</div>`).join('')
+    ) : ''
+  ].join('')
 }
 
 function setOddEven(mode) {

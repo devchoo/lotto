@@ -129,7 +129,7 @@
 <div class="card">
   <h2>미출현 번호 우선 선택</h2>
   <label>
-    <input type="checkbox" id="useMissing" onchange="toggleMissing()">
+    <input type="checkbox" id="useMissing" onchange="toggleMissing()" checked>
     미출현 번호 우선 포함
   </label>
   <div class="slider-wrap" id="sliderWrap">
@@ -906,12 +906,42 @@ function generate() {
 
   const container = document.getElementById('resultGames')
   const latest = allDraws[allDraws.length - 1]?.round || ''
-  container.innerHTML = `<p class="stats-txt">기준: ${draws.length}회차 (최신 ${latest}회) · 고정: ${fixed.length ? fixed.join(', ') : '없음'}</p>`
-    + games.map((nums, i) => `
-    <div class="game-item">
-      <div class="game-label">게임 ${i + 1}</div>
-      <div class="balls">${nums.map(n => `<div class="ball ${fixed.includes(n) ? 'fixed' : ''}" style="background:${ballColor(n)}">${n}</div>`).join('')}</div>
-    </div>`).join('')
+
+  // 선택 옵션 태그 생성
+  const missingSet = useMissing ? new Set(getMissingNums(missingN)) : new Set()
+  const consecMode = document.getElementById('consecSelect')?.value || 'free'
+  const optTags = []
+  if (useMissing) optTags.push(`<span style="background:#ebf8ff;color:#2b6cb0;padding:2px 6px;border-radius:10px;font-size:0.68rem;margin-right:4px">미출현우선</span>`)
+  if (oddEvenMode !== 'free') {
+    const [o,e] = oddEvenMode.split('_')
+    optTags.push(`<span style="background:#faf5ff;color:#6b46c1;padding:2px 6px;border-radius:10px;font-size:0.68rem;margin-right:4px">홀${o}:짝${e}</span>`)
+  }
+  if (consecMode === 'include') optTags.push(`<span style="background:#f0fff4;color:#276749;padding:2px 6px;border-radius:10px;font-size:0.68rem;margin-right:4px">연속포함</span>`)
+  if (consecMode === 'exclude') optTags.push(`<span style="background:#fff5f5;color:#c53030;padding:2px 6px;border-radius:10px;font-size:0.68rem;margin-right:4px">연속제외</span>`)
+  if (fixed.length) optTags.push(`<span style="background:#fffff0;color:#744210;padding:2px 6px;border-radius:10px;font-size:0.68rem;margin-right:4px">고정${fixed.join(',')}</span>`)
+  if (manualExclude.size) optTags.push(`<span style="background:#fff5f5;color:#c53030;padding:2px 6px;border-radius:10px;font-size:0.68rem;margin-right:4px">제외${[...manualExclude].sort((a,b)=>a-b).join(',')}</span>`)
+
+  container.innerHTML = `<p class="stats-txt">기준: ${draws.length}회차 (최신 ${latest}회)</p>`
+    + games.map((nums, i) => {
+      const numTags = nums.map(n => {
+        const tags = []
+        if (fixed.includes(n)) tags.push(`<div style="font-size:0.58rem;color:#fff;background:#667eea;border-radius:4px;padding:0 3px;margin-top:2px">고정</div>`)
+        else if (missingSet.has(n)) tags.push(`<div style="font-size:0.58rem;color:#fff;background:#63b3ed;border-radius:4px;padding:0 3px;margin-top:2px">미출현</div>`)
+        return `<div style="display:flex;flex-direction:column;align-items:center">
+          <div class="ball ${fixed.includes(n) ? 'fixed' : ''}" style="background:${ballColor(n)}">${n}</div>
+          ${tags.join('')}
+        </div>`
+      }).join('')
+      const oddCnt = nums.filter(n=>n%2===1).length
+      const hasC = hasConsec(nums)
+      const meta = `<div style="font-size:0.7rem;color:#a0aec0;margin-top:6px">홀${oddCnt}:짝${6-oddCnt} · ${hasC ? '연속있음' : '연속없음'} · 합계${nums.reduce((a,b)=>a+b,0)}</div>`
+      return `<div class="game-item">
+        <div class="game-label">게임 ${i + 1}</div>
+        <div class="balls" style="align-items:flex-start">${numTags}</div>
+        ${meta}
+      </div>`
+    }).join('')
+    + (optTags.length ? `<div style="margin-top:10px;padding:10px 14px;background:#f7fafc;border-radius:10px;font-size:0.75rem;color:#4a5568"><b>적용 옵션</b> ${optTags.join('')}</div>` : '')
     + (patternLog.some(p => p.attempts > 1) ? `<div style="margin-top:12px;padding:10px 14px;background:#fffaf0;border-radius:10px;border:1px solid #f6e05e;font-size:0.75rem;color:#744210;text-align:left">
       <b>추출 로그</b><br>${patternLog.map((p, i) => p.attempts > 1 ? `게임 ${i+1}: ${p.detected.join(', ')} 감지 → ${p.attempts}회 재추출` : '').filter(Boolean).join('<br>')}
     </div>` : '')

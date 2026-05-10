@@ -227,6 +227,16 @@
   </select>
 </div>
 
+<!-- 연속번호 -->
+<div class="card">
+  <h2>연속번호</h2>
+  <select id="consecSelect" style="border:1.5px solid #e2e8f0;border-radius:8px;padding:8px 12px;font-size:0.9rem;width:100%;background:#fff">
+    <option value="free">자유 (제한 없음)</option>
+    <option value="include">연속번호 포함</option>
+    <option value="exclude">연속번호 제외</option>
+  </select>
+</div>
+
 <!-- 게임 수 -->
 <div class="card">
   <h2>추출 게임 수</h2>
@@ -832,6 +842,20 @@ function checkOddEven(nums) {
   return odd === reqOdd && even === reqEven
 }
 
+function hasConsec(nums) {
+  const s = [...nums].sort((a,b)=>a-b)
+  for (let i=0;i<s.length-1;i++) if(s[i+1]-s[i]===1) return true
+  return false
+}
+
+function checkConsec(nums) {
+  const mode = document.getElementById('consecSelect')?.value || 'free'
+  if (mode === 'free') return true
+  if (mode === 'include') return hasConsec(nums)
+  if (mode === 'exclude') return !hasConsec(nums)
+  return true
+}
+
 function generate() {
   const draws = getDraws()
   const freq = getFreq(draws)
@@ -872,7 +896,7 @@ function generate() {
         return w
       })
       chosen = [...chosen, ...weightedSample(pool, weights, 6 - chosen.length)].sort((a, b) => a - b)
-      pattern = isPatternGame(chosen) || (!checkOddEven(chosen) ? '홀짝비율' : null)
+      pattern = isPatternGame(chosen) || (!checkOddEven(chosen) ? '홀짝비율' : null) || (!checkConsec(chosen) ? '연속번호' : null)
       if (pattern) detected.push(pattern)
       attempts++
     } while (pattern && attempts < 100)

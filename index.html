@@ -432,8 +432,9 @@ async function loadData() {
       const col = n<=10?colors[0]:n<=20?colors[1]:n<=30?colors[2]:n<=40?colors[3]:colors[4]
       // 미출현 횟수 계산
       let lastIdx = -1
-      allDraws.forEach((d,i) => { if(d.numbers.includes(n)) lastIdx=i })
-      const gap = allDraws.length - 1 - lastIdx
+      // 최신 회차 자신 제외하고 이전 회차에서 마지막 출현 찾기
+      allDraws.forEach((d,i) => { if(i < allDraws.length - 1 && d.numbers.includes(n)) lastIdx=i })
+      const gap = lastIdx < 0 ? allDraws.length - 1 : allDraws.length - 2 - lastIdx
       return `<div style="display:flex;flex-direction:column;align-items:center;gap:2px">
         <span style="width:38px;height:38px;border-radius:50%;background:${col};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:0.9rem">${n}</span>
         <span style="font-size:0.62rem;color:#a0aec0">${gap}회째</span>

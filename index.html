@@ -961,14 +961,7 @@ function generate() {
   if (fixed.length) optTags.push(`<span style="background:#fffff0;color:#744210;padding:2px 6px;border-radius:10px;font-size:0.68rem;margin-right:4px">고정${fixed.join(',')}</span>`)
   if (manualExclude.size) optTags.push(`<span style="background:#fff5f5;color:#c53030;padding:2px 6px;border-radius:10px;font-size:0.68rem;margin-right:4px">제외${[...manualExclude].sort((a,b)=>a-b).join(',')}</span>`)
 
-  const latestFull = allDraws[allDraws.length-1]
-  const winInfo = latestFull?.rnk1WnNope != null
-    ? `<div style="font-size:0.75rem;color:#718096;margin-bottom:10px;padding:10px;background:#f7fafc;border-radius:10px">
-        <b>${latestFull.round}회차</b> (${latestFull.ltRflYmd?.replace(/(\d{4})(\d{2})(\d{2})/,'$1.$2.$3') || ''}) &nbsp;
-        1등 <b>${latestFull.rnk1WnNope}명</b> &nbsp;·&nbsp;
-        1인당 <b>${Math.floor(latestFull.rnk1WnAmt/100000000*0.78).toLocaleString()}억</b> (세후)
-      </div>` : ''
-  container.innerHTML = `<p class="stats-txt">기준: ${draws.length}회차 (최신 ${latest}회)</p>${winInfo}`
+  container.innerHTML = `<p class="stats-txt">기준: ${draws.length}회차 (최신 ${latest}회)</p>`
     + games.map((nums, i) => {
       const numTags = nums.map(n => {
         const tags = []

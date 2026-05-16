@@ -991,12 +991,15 @@ function generate() {
       const numTags = nums.map(n => {
         const tags = []
         const gap = getNumLastGap(n)
+        tags.push(`<div style="font-size:0.62rem;color:#a0aec0;margin-bottom:2px">${gap}회째</div>`)
         if (fixed.includes(n)) tags.push(`<div style="font-size:0.58rem;color:#fff;background:#667eea;border-radius:4px;padding:0 3px;margin-top:2px">고정</div>`)
         else if (missingSet.has(n)) tags.push(`<div style="font-size:0.58rem;color:#fff;background:#63b3ed;border-radius:4px;padding:0 3px;margin-top:2px">미출현</div>`)
-        tags.push(`<div style="font-size:0.6rem;color:#718096;margin-top:1px">${gap}회째</div>`)
+        const topTag = tags[0] || ''
+        const bottomTag = tags[1] || ''
         return `<div style="display:flex;flex-direction:column;align-items:center">
+          ${topTag}
           <div class="ball ${fixed.includes(n) ? 'fixed' : ''}" style="background:${ballColor(n)}">${n}</div>
-          ${tags.join('')}
+          ${bottomTag}
         </div>`
       }).join('')
       const oddCnt = nums.filter(n=>n%2===1).length
@@ -1017,7 +1020,7 @@ function generate() {
         ${meta}
       </div>`
     }).join('')
-    + (optTags.length ? `<div style="margin-top:10px;padding:10px 14px;background:#f7fafc;border-radius:10px;font-size:0.75rem;color:#4a5568"><b>적용 옵션</b> ${optTags.join('')}</div>` : '')
+    + (optTags.length ? `<div style="margin-top:10px;padding:10px 14px;background:#f7fafc;border-radius:10px;font-size:0.75rem;color:#4a5568;text-align:center"><b style='display:block;margin-bottom:6px'>적용 옵션</b>${optTags.join('')}</div>` : '')
     + (patternLog.some(p => p.attempts > 1) ? `<div style="margin-top:12px;padding:10px 14px;background:#fffaf0;border-radius:10px;border:1px solid #f6e05e;font-size:0.75rem;color:#744210;text-align:left">
       <b>추출 로그</b><br>${patternLog.map((p, i) => p.attempts > 1 ? `게임 ${i+1}: ${p.detected.join(', ')} 감지 → ${p.attempts}회 재추출` : '').filter(Boolean).join('<br>')}
     </div>` : '')

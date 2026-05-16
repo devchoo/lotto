@@ -844,6 +844,15 @@ function checkOddEven(nums) {
   return odd === reqOdd && even === reqEven
 }
 
+function getNumLastGap(n) {
+  // 번호 n이 마지막으로 나온 이후 몇 회 안 나왔는지
+  const sorted = [...allDraws].sort((a,b)=>a.round-b.round)
+  let lastIdx = -1
+  sorted.forEach((d,i) => { if(d.numbers.includes(n)) lastIdx=i })
+  if (lastIdx < 0) return sorted.length // 한 번도 안 나온 경우
+  return sorted.length - 1 - lastIdx
+}
+
 function hasConsec(nums) {
   const s = [...nums].sort((a,b)=>a-b)
   for (let i=0;i<s.length-1;i++) if(s[i+1]-s[i]===1) return true
@@ -923,12 +932,21 @@ function generate() {
   if (fixed.length) optTags.push(`<span style="background:#fffff0;color:#744210;padding:2px 6px;border-radius:10px;font-size:0.68rem;margin-right:4px">고정${fixed.join(',')}</span>`)
   if (manualExclude.size) optTags.push(`<span style="background:#fff5f5;color:#c53030;padding:2px 6px;border-radius:10px;font-size:0.68rem;margin-right:4px">제외${[...manualExclude].sort((a,b)=>a-b).join(',')}</span>`)
 
-  container.innerHTML = `<p class="stats-txt">기준: ${draws.length}회차 (최신 ${latest}회)</p>`
+  const latestFull = allDraws[allDraws.length-1]
+  const winInfo = latestFull?.rnk1WnNope != null
+    ? `<div style="font-size:0.75rem;color:#718096;margin-bottom:10px;padding:10px;background:#f7fafc;border-radius:10px">
+        <b>${latestFull.round}회차</b> (${latestFull.ltRflYmd?.replace(/(\d{4})(\d{2})(\d{2})/,'$1.$2.$3') || ''}) &nbsp;
+        1등 <b>${latestFull.rnk1WnNope}명</b> &nbsp;·&nbsp;
+        1인당 <b>${Math.floor(latestFull.rnk1WnAmt/100000000*0.78).toLocaleString()}억</b> (세후)
+      </div>` : ''
+  container.innerHTML = `<p class="stats-txt">기준: ${draws.length}회차 (최신 ${latest}회)</p>${winInfo}`
     + games.map((nums, i) => {
       const numTags = nums.map(n => {
         const tags = []
+        const gap = getNumLastGap(n)
         if (fixed.includes(n)) tags.push(`<div style="font-size:0.58rem;color:#fff;background:#667eea;border-radius:4px;padding:0 3px;margin-top:2px">고정</div>`)
         else if (missingSet.has(n)) tags.push(`<div style="font-size:0.58rem;color:#fff;background:#63b3ed;border-radius:4px;padding:0 3px;margin-top:2px">미출현</div>`)
+        tags.push(`<div style="font-size:0.6rem;color:#718096;margin-top:1px">${gap}회째</div>`)
         return `<div style="display:flex;flex-direction:column;align-items:center">
           <div class="ball ${fixed.includes(n) ? 'fixed' : ''}" style="background:${ballColor(n)}">${n}</div>
           ${tags.join('')}
@@ -936,7 +954,16 @@ function generate() {
       }).join('')
       const oddCnt = nums.filter(n=>n%2===1).length
       const hasC = hasConsec(nums)
-      const meta = `<div style="font-size:0.7rem;color:#a0aec0;margin-top:6px">홀${oddCnt}:짝${6-oddCnt} · ${hasC ? '연속있음' : '연속없음'} · 합계${nums.reduce((a,b)=>a+b,0)}</div>`
+      const sumVal = nums.reduce((a,b)=>a+b,0)
+      // 최신 회차와 일치하는 번호 수 확인 (재미용)
+      const latestDraw = allDraws[allDraws.length-1]
+      const matchCnt = latestDraw ? nums.filter(n=>latestDraw.numbers.includes(n)).length : 0
+      const meta = `<div style="font-size:0.7rem;color:#718096;margin-top:8px;display:flex;gap:10px;flex-wrap:wrap">
+        <span>홀${oddCnt}:짝${6-oddCnt}</span>
+        <span>${hasC ? '🔗연속있음' : '연속없음'}</span>
+        <span>합계 <b>${sumVal}</b></span>
+        ${matchCnt>0 ? `<span style="color:#e53e3e">${latestDraw.round}회 ${matchCnt}개 일치</span>` : ''}
+      </div>`
       return `<div class="game-item">
         <div class="game-label">게임 ${i + 1}</div>
         <div class="balls" style="align-items:flex-start">${numTags}</div>
